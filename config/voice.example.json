@@ -1,0 +1,14 @@
+{
+  "backendUrl": "https://voice.example.com",
+  "accountId": "",
+  "appId": "",
+  "businessNumber": "",
+  "supportName": "Chăm sóc khách hàng",
+  "pushEnvironment": "production",
+  "firebase": {
+    "appId": "",
+    "apiKey": "",
+    "projectId": "",
+    "senderId": ""
+  }
+}
