@@ -58,7 +58,7 @@ Chạy `npm run test:host` trước kiểm thử thiết bị. Dùng gateway pro
 | Bootstrap gửi user_id hoặc code_verifier | HTTP 400, gateway chưa nhận issue |
 | Đăng nhập Android / iOS | Native prepare dùng đúng package/Bundle ID và push environment, bridge chỉ trả metadata protocol 2 |
 | Ticket sai/hết hạn/đã consume | Đăng nhập thất bại, bootstrap lại bằng attempt mới qua host |
-| Response exchange mất | Attempt mới thay phiên chưa nhận được theo cùng installation, không tự replay exchange |
+| Response exchange mất | Bootstrap lại bằng attempt/locator mới, không tự replay exchange. Phiên có outcome chưa rõ được xử lý theo host revoke/expiry và device cap; không hứa đã thu hồi phiên cũ |
 | Refresh concurrent | Native single-flight, JavaScript tiếp tục chỉ nhận metadata |
 | Logout khi native revoke lỗi | Local loggedOut, host vẫn nhận logout và lưu outbox |
 | Gateway tạm lỗi lúc logout | Host đã inactive, bootstrap bị chặn, worker retry cùng request UUID sau restart |

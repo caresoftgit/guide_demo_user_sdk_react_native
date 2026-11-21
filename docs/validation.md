@@ -19,3 +19,9 @@ Enterprise bearer của demo ở JS memory. Khi đóng process, host logout đan
 - Native Android/iOS từ chối restore protocol 1 trong cấu hình secure mặc định.
 
 Các log final nằm tại `/private/tmp/rn-final-android-consumer.log`, `/private/tmp/rn-final-ios-consumer.log` và `/private/tmp/rn-final-demo-js.log` trên máy build. Android APK dùng debug signing của demo. iOS artifact là simulator app. Nghiệm thu gateway thật, media/push và thiết bị vẫn theo checklist testing.md.
+
+## Bổ sung bản sửa native cuối
+
+Gói bàn giao đã thay binary iOS bằng commit c3402ce: sửa natural expiry/cold start và khôi phục Keychain khi app dừng giữa commit. 70 Swift tests, consumer Swift/ObjC device/simulator và 1.415 checksum distribution đều qua. Gói RN được đóng lại, npm ci offline và 330 checksum của package đã cài đều khớp. Demo13tests, host7tests và TypeScript qua; iOS Release arm64 simulator build từ gói đã sửa qua tại /private/tmp/voice-rn-corrected-ios-consumer.log. UUID arm64 framework trong app khớp vendor đã sửa (Xcode strip/thin khi embed). Android inputs không đổi so với build285tasks đã qua; APK release đã cài/mở trên API35emulator, Home chưa cấu hình hiển thị đúng và khóa gọi. Smoke này chưa đăng nhập gateway hoặc gọi thật.
+
+SHA256 gói cuối: 15941f0812c8a88c10e85cae4008669eb9e4ee7534999f324181416cbe4fac47.
