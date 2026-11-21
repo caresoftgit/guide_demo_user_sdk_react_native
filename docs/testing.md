@@ -5,7 +5,7 @@
 1. Làm đủ các bước [tích hợp](integration.md), cấu hình Caresoft App/push, điền `config/voice.local.json`, chạy `npm run configure`.
 2. Android: đặt package/Firebase client đúng ứng dụng. iOS: đặt Bundle ID, signing, APNs environment và push capabilities đúng môi trường. Không nhập private key server vào app.
 3. Chạy `npm ci`, `npm test`, `npm run typecheck`. iOS chạy `cd ios && pod install`, mở CustomerVoiceDemo.xcworkspace.
-4. Build Android bằng `cd android && ./gradlew :app:assembleDebug :app:assembleRelease :app:lint`. Demo release dùng debug signing chỉ cho test local. Build iOS simulator bằng Xcode; iPhone dùng signing của bạn.
+4. Build Android bằng `cd android && ./gradlew :app:assembleDebug :app:assembleRelease :app:lint`. Demo release dùng debug signing chỉ cho test local. Build iOS simulator bằng Xcode với signing ad-hoc và simulator entitlements; CLI dùng `CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=YES`. Không tắt signing khi test Keychain/login. iPhone dùng signing của bạn.
 5. Mở demo, cấp quyền rồi đăng nhập bằng thông tin khách hàng test của bạn. Nếu chưa cấu hình, Home phải hướng dẫn cấu hình và khóa nút Gọi CSKH.
 
 ## Kiểm thử trên emulator/simulator

@@ -11,7 +11,7 @@ Bộ SDK/demo **0.5.0** dành cho ứng dụng khách hàng. Demo dùng React Na
 
 `packages/` chứa đúng SDK `.tgz` mà demo sử dụng; không cần clone source native hoặc tự build SDK để chạy demo. Có Internet để tải dependencies upstream. Không dùng Expo Go.
 
-Android demo compileSdk 37, build-tools 37, NDK 28.1.13356709; minSdk 26. Ghi `sdk.dir` vào `android/local.properties` hoặc đặt ANDROID_HOME. Cấu hình này không được đưa vào Git. Release demo dùng debug key để thử local, không dùng chữ ký demo để phát hành ứng dụng production. iOS simulator không cần signing; iPhone nhận APNs cần Bundle ID/profile/environment đúng.
+Android demo compileSdk 37, build-tools 37, NDK 28.1.13356709; minSdk 26. Ghi `sdk.dir` vào `android/local.properties` hoặc đặt ANDROID_HOME. Cấu hình này không được đưa vào Git. Release demo dùng debug key để thử local, không dùng chữ ký demo để phát hành ứng dụng production. iOS simulator dùng chữ ký ad-hoc và entitlement Keychain, không cần Apple certificate; iPhone nhận APNs cần Bundle ID/profile/environment đúng.
 
 Form đăng nhập dùng username/password fixture của host mô phỏng. Host ánh xạ principal sang user_id đã cấu hình. Integration credential và user mapping nằm riêng trên server. Mật khẩu được xóa khỏi form khi đóng. Enterprise bearer chỉ giữ trong memory của JavaScript.
 

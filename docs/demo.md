@@ -73,7 +73,7 @@ APK nằm tại `android/app/build/outputs/apk/release/app-release.apk`. Bản r
 5. Với development/sandbox: đặt `pushEnvironment` thành `sandbox`, chạy configure, đặt Xcode build setting `VOICE_APNS_ENVIRONMENT=development` và ký development. Với TestFlight: dùng `production` trong cả hai cấu hình và profile distribution. Không đổi Bundle ID mà giữ cấu hình push của app khác.
 6. Trước khi phân phối, bổ sung AppIcon riêng trong `Images.xcassets/AppIcon.appiconset`; repo không kèm logo hay thông tin ký của môi trường test nội bộ.
 
-Simulator dùng thử UI/bridge và gọi ra khi gateway sẵn sàng. Nghiệm thu nhận cuộc gọi APNs, CallKit, khóa màn hình và audio/chuyển mạng phải thực hiện trên iPhone thật.
+Simulator dùng thử UI/bridge và gọi ra khi gateway sẵn sàng. Bản simulator dùng `CustomerVoiceDemo.simulator.entitlements` với application identifier và Keychain group theo Bundle ID. Giữ signing bật (ad-hoc, không cần Apple certificate); không dùng `CODE_SIGNING_ALLOWED=NO` khi test đăng nhập. Nếu build CLI, dùng `CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=YES`. Signing tắt có thể gây `SESSION_STORAGE_UNAVAILABLE`, log securityd `-34018`, vì phiên không lưu được vào Keychain. Nghiệm thu nhận cuộc gọi APNs, CallKit, khóa màn hình và audio/chuyển mạng phải thực hiện trên iPhone thật.
 
 ## 5. Đăng nhập và gọi thử
 
