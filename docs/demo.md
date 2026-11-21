@@ -10,7 +10,7 @@ npm ci
 cp config/voice.example.json config/voice.local.json
 ```
 
-Dùng Node 22.13+ (khuyến nghị Node 24). Gói SDK 0.1.3 đã có trong `packages/`, không cần clone source SDK hoặc tải package từ npm registry.
+Dùng Node 22.13+ (khuyến nghị Node 24). Gói SDK 0.5.0 đã có trong `packages/`, không cần clone source SDK hoặc tải package từ npm registry.
 
 ## 2. Điền cấu hình của ứng dụng
 
@@ -19,6 +19,7 @@ Hoàn thành [tạo App Caresoft và push](integration.md#2-tạo-app-trên-care
 | Trường | Điền giá trị |
 |---|---|
 | `backendUrl` | HTTPS URL do Caresoft cung cấp, không thêm `/api/v1/voice` |
+| `enterpriseBackendUrl` | HTTPS URL host simulator, có certificate thiết bị tin cậy |
 | `accountId` | Account ID do Caresoft cung cấp, dạng chuỗi |
 | `appId` | App ID tạo trên Caresoft, khác Firebase App ID và Apple Bundle ID |
 | `businessNumber` | Đầu số CSKH đã được cấp và định tuyến, dạng chuỗi |
@@ -29,7 +30,7 @@ Hoàn thành [tạo App Caresoft và push](integration.md#2-tạo-app-trên-care
 | `firebase.projectId` | Firebase Project ID |
 | `firebase.senderId` | Firebase messaging sender ID |
 
-Các trường Firebase chỉ dùng cho Android. Demo khởi tạo bằng FirebaseOptions, không cần chép `google-services.json`. Không thêm account API token hoặc file service-account vào cấu hình. Token account chỉ nhập khi đăng nhập; credentials push chỉ nằm trên server Caresoft.
+Các trường Firebase chỉ dùng cho Android. Demo khởi tạo bằng FirebaseOptions, không cần chép `google-services.json`. Không thêm account API token hoặc file service-account vào cấu hình. Username/password fixture được kiểm tra tại host simulator. Integration credential và user mapping chỉ nằm trên server.
 
 ```sh
 npm run configure
@@ -76,7 +77,7 @@ Simulator dùng thử UI/bridge và gọi ra khi gateway sẵn sàng. Nghiệm t
 
 ## 5. Đăng nhập và gọi thử
 
-1. Trên Home bấm **Đăng nhập**, nhập User ID của khách hàng đã được xác thực và Account API token được cấp an toàn. Demo không có tài khoản mặc định. Token không được lưu lại trong JS/form sau khi đóng.
+1. Khởi động [host simulator](../host/README.md). Trên Home bấm **Đăng nhập**, nhập username/password fixture do bạn cấu hình. Host tự lấy user_id server-side, issue ticket, rồi native exchange bằng verifier riêng.
 2. Kiểm tra trạng thái đăng nhập và các điều kiện readiness. `canCall` và `canReceive` là hai điều kiện riêng; xem lý do nếu chưa sẵn sàng.
 3. Bấm **Gọi CSKH**. Demo gọi `businessNumber` đã cấu hình, không có màn hình quay số hoặc trạng thái agent.
 4. Thử mic, loa, DTMF; về Home rồi bấm **Quay lại cuộc gọi** để mở lại cùng cuộc gọi.

@@ -2,9 +2,9 @@
 
 ## 1. Chuẩn bị
 
-Bản SDK 0.1.3 kiểm chứng trên React Native 0.88.1/React 19.3, New Architecture qua native-module interop. Android API 26+; iOS 15.1+ và Xcode 26.4/Swift 6.3; Node 22.13+ (khuyến nghị Node 24), JDK 17. Cần native build, không dùng Expo Go.
+Bản SDK 0.5.0 kiểm chứng trên React Native 0.88.1/React 19.3, New Architecture qua native-module interop. Android API 26+; iOS 15.1+ và Xcode 26.4/Swift 6.3; Node 22.13+ (khuyến nghị Node 24), JDK 17. Cần native build, không dùng Expo Go.
 
-Nhận gateway HTTPS URL (không thêm `/api/v1/voice`), Account ID và đầu số CSKH đã định tuyến từ Caresoft. Tạo Caresoft App ID bên dưới. User ID lấy từ khách hàng đã được ứng dụng xác thực; SDK không xác thực thay luồng đăng nhập ứng dụng. Account API token nhận qua kênh bảo mật để truyền vào login, không đưa vào config hoặc APK/IPA.
+Nhận gateway HTTPS URL (không thêm `/api/v1/voice`), Account ID và đầu số CSKH đã định tuyến từ Caresoft. Tạo Caresoft App ID bên dưới. Host xác thực principal bằng hệ thống doanh nghiệp, ánh xạ user_id server-side và xin ticket bằng integration credential cvsk_. Bản demo dùng fixture phát triển rõ ràng và preconfigured user_id. Xem [host simulator](../host/README.md) để cấu hình issue/revoke/read và durable logout outbox.
 
 ## 2. Tạo App trên Caresoft và push
 
@@ -22,7 +22,7 @@ Xem [chạy demo từng bước](demo.md) để cấu hình project mẫu Androi
 Chép file SDK từ `packages/` vào dự án React Native:
 
 ```sh
-npm install ./packages/caresoft-customer-voice-react-native-0.1.3.tgz
+npm install ./packages/caresoft-customer-voice-react-native-0.5.0.tgz
 ```
 
 Package đã kèm bridge và artifact native; không thêm LiveKit, react-native-webrtc hoặc CallKeep khác cho tính năng này. SDK native tự quản lý media/CallKit/Telecom.
@@ -118,13 +118,15 @@ Subscribe nhận snapshot hiện tại và thay đổi mới; snapshot cũ đế
 ## 7. Login, quyền và readiness
 
 ```ts
-await CustomerVoice.login(authenticatedCustomerId, accountApiToken);
+const preparation = await CustomerVoice.prepareLogin();
+const ticket = await authenticatedHost.bootstrap(preparation);
+await CustomerVoice.loginWithTicket(preparation.attemptId, ticket.login_ticket);
 await CustomerVoice.requestMicrophonePermission(); // từ thao tác người dùng
 const ready = await CustomerVoice.checkReadiness();
 // ready.isLoggedIn, ready.canCall, ready.canReceive, ready.reasons
 ```
 
-User ID/Account ID là chuỗi số 1–4294967295. Account token xác thực tích hợp account, không tự chứng minh danh tính khách hàng; host chỉ cấp sau xác thực khách hàng và thống nhất cách cấp production với Caresoft. Không hardcode/persist/log token account. Native giữ session bằng Keystore/Keychain và tự restore. Demo có form login riêng của host để test, không phải form bắt buộc của SDK.
+Host chuyển public preparation thành snake_case, xác thực enterprise bearer và lấy user_id từ mapping server-side. Native giữ verifier/access/refresh token, quản lý refresh single-flight và tự restore. SessionInfo public gồm userId, sessionId, expiresAt, sessionExpiresAt và authProtocol=2. Ticket chỉ ở memory trong bootstrap. Khi exchange mất response, dùng attempt mới qua host còn đăng nhập.
 
 Android 13+ xin POST_NOTIFICATIONS từ host (demo dùng PermissionsAndroid). Android 14+ kiểm tra `canShowIncomingScreen()`, mở `requestIncomingScreenPermission()` từ thao tác người dùng. Native không bypass PIN và không bảo đảm nhận push sau Force stop. iOS CallKit không dùng quyền full-screen Android.
 
@@ -149,10 +151,14 @@ UI native tự hiển thị call khi foreground và nhận qua CallKit/notificat
 Khi AppState trở lại active, gọi `CustomerVoice.resume()`; không tự login lại. Đọc state để phục hồi Home sau reload.
 
 ```ts
-await CustomerVoice.logout();
+try {
+  await CustomerVoice.logout();
+} finally {
+  await authenticatedHost.logout(); // Host persists its revoke outbox before responding.
+}
 ```
 
-Logout dọn local trước khi revoke server. Promise có thể báo chưa xác nhận revoke; local vẫn logout, không khôi phục phiên cũ. Theo dõi sessionState.loginRequired/ loggedOut để đưa người dùng về luồng xác thực của host. Token nhập trong dialog demo bị xóa khi đóng.
+Logout dọn local trước khi revoke server. Promise có thể báo chưa xác nhận revoke; local vẫn logout, không khôi phục phiên cũ. Theo dõi sessionState.loginRequired/ loggedOut để đưa người dùng về luồng xác thực của host. Demo luôn thử host logout dù native báo LOGOUT_REVOKE_UNCONFIRMED. Nếu host chưa nhận được vì offline, demo giữ enterprise bearer trong memory để thử lại. Sau khi host nhận, outbox trên đĩa retry với cùng request UUID và poll revocation đến completed.
 
 ## 10. Build và nghiệm thu
 

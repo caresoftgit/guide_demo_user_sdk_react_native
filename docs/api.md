@@ -1,4 +1,4 @@
-# API Customer Voice React Native 0.1.3
+# API Customer Voice React Native 0.5.0
 
 Import `{CustomerVoice, CustomerVoiceError}` từ `@caresoft/customer-voice-react-native`. API điều khiển trả Promise; state/events dùng callback. Native bootstrap phải chạy trước JavaScript (Application/AppDelegate), theo hướng dẫn tích hợp trong bộ demo.
 
@@ -7,18 +7,21 @@ Import `{CustomerVoice, CustomerVoiceError}` từ `@caresoft/customer-voice-reac
 | Hàm | Kết quả / sử dụng |
 |---|---|
 | `initialize(config)` | `Promise<void>`, xác nhận config khớp native bootstrap; không tạo engine mới |
-| `login(userId, tenantApiToken)` | `SessionInfo`; chỉ gọi sau khi host đã xác thực khách hàng |
+| `prepareLogin()` | `LoginPreparation` chứa challenge S256 cho bootstrap host |
+| `loginWithTicket(attemptId, ticket)` | `SessionInfo` sau native exchange ticket và verifier |
 | `logout()` | Dọn local, kết thúc call và thu hồi phiên; lỗi revoke không khôi phục local session |
 | `checkReadiness()` | `VoiceReadiness`, xác minh khả năng gọi/nhận hiện tại |
 | `resume()` | Đồng bộ lại phiên/call khi app foreground; không tự tạo cuộc gọi |
 | `synchronize()` | Chờ lấy danh sách call/readiness từ server; trả snapshot mới, lỗi sẽ giữ yêu cầu đồng bộ ở host |
 | `getState()` | Snapshot đầy đủ hiện tại |
 
-`config`: `backendUrl`, `accountId`, `appId`, `supportName?`, `pushEnvironment?: 'production'|'sandbox'`. Ba ID/backend phải giống cấu hình native; iOS còn kiểm tra environment. Android không dùng APNs environment. Account/User ID truyền chuỗi số, không dùng số JavaScript. Token account chỉ truyền qua login, không lưu config/AsyncStorage hoặc log.
+`config`: `backendUrl`, `accountId`, `appId`, `supportName?`, `pushEnvironment?: 'production'|'sandbox'`. Ba ID/backend phải giống cấu hình native; iOS còn kiểm tra environment. Android không dùng APNs environment. Account/User ID truyền chuỗi số, không dùng số JavaScript. Integration credential chỉ nằm ở backend doanh nghiệp. Backend lấy user_id từ principal đã xác thực.
 
-`SessionInfo`: `userId`, `sessionId`, `expiresAt` (ISO8601). `sessionState` có `status: 'loggedOut'`, `'authenticated'` kèm `session`, hoặc `'loginRequired'` kèm `reason`.
+`LoginPreparation` gồm `attemptId`, `installationId`, `platform`, `applicationId`, `pushEnvironment`, `codeChallenge`, `codeChallengeMethod` bằng `S256`. Native giữ verifier và pending attempt. Attempt mới thay pending attempt cũ, có hạn 120 giây local. Gateway quyết định hạn ticket.
 
-`VoiceReadiness`: `sessionStatus: 'LOGGED_OUT'|'VALID'|'UNKNOWN'`, `isLoggedIn`, `canCall`, `canReceive`, `userId`, `reasons: string[]`, `checkedAt`, `controlConnected`. UNKNOWN khi chưa xác minh được phiên không đồng nghĩa logout. canReceive không thay cho kiểm thử chuyển push thực tế.
+`SessionInfo` gồm `userId`, `sessionId`, `expiresAt`, `sessionExpiresAt` (ISO8601) và `authProtocol` bằng `2`. `sessionState` có `status: 'loggedOut'`, `'authenticated'` kèm `session`, hoặc `'loginRequired'` kèm `reason`.
+
+`VoiceReadiness`: `sessionStatus: 'LOGGED_OUT'|'VALID'|'UNKNOWN'|'EXPIRED'`, `isLoggedIn`, `canCall`, `canReceive`, `userId`, `reasons: string[]`, `checkedAt`, `controlConnected`. UNKNOWN khi chưa xác minh được phiên không đồng nghĩa logout. canReceive không thay cho kiểm thử chuyển push thực tế.
 
 ## Gọi và điều khiển
 
@@ -53,7 +56,9 @@ offState(); offEvents();
 
 Subscribe state trước khi lấy snapshot ban đầu; `revision` tăng đơn điệu trong process native giúp loại snapshot cũ đến muộn. Events là thông báo tức thời, không replay lịch sử; luôn dựng UI từ state đầy đủ khi attach lại. `dispose()` chỉ hủy các observer JS, không logout/hangup. Không gọi dispose của singleton trong một component nếu component khác còn dùng observer.
 
-State public không có access/refresh/account token, media credential hoặc nội dung push. Không ghi token truyền vào login/updatePushToken trong log ứng dụng.
+State public không có access/refresh/account token, media credential hoặc nội dung push. Ticket, push token, enterprise bearer và mọi credential phải được redaction khỏi log, crash report, analytics và URL. Native tự quản lý refresh single-flight và storage.
+
+Khi ticket hết hạn hoặc exchange mất response, bắt đầu attempt mới qua host còn đăng nhập. `logout()` dọn local trước, rồi app luôn gửi enterprise logout để host ghi durable revoke outbox. Khi offline, giao diện phải báo host chưa nhận được yêu cầu. Sau khi host nhận, outbox retry/poll đến completion. Absolute session expiry cho phép call ACTIVE đang có hoàn tất theo capability native và hard deadline. Explicit revoke dừng quyền phiên theo gateway.
 
 ## Push và quyền
 
@@ -76,6 +81,7 @@ Bắt `CustomerVoiceError`, đọc `code` và `status` (0 nếu không có HTTP 
 | NATIVE_MODULE_NOT_LINKED | Cài Pods/autolinking và build native lại, không chỉ reload Metro |
 | NATIVE_BOOTSTRAP_REQUIRED / CONFIGURATION_MISMATCH | Kiểm tra Application/AppDelegate và config JS |
 | INVALID_ARGUMENT / INVALID_BUSINESS_NUMBER / INVALID_DTMF | Sửa input |
+| INVALID_LOGIN_TICKET / LOGIN_ATTEMPT_EXPIRED | Tạo attempt mới rồi bootstrap qua host còn đăng nhập |
 | LOGIN_REQUIRED / UNAUTHORIZED | Về luồng xác thực của host; không login lặp khi offline |
 | MICROPHONE_PERMISSION_REQUIRED | Hướng dẫn cấp quyền |
 | ROUTE_UNAVAILABLE | Đọc lại audio routes |

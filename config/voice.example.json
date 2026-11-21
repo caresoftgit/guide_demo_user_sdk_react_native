@@ -10,5 +10,6 @@
     "apiKey": "",
     "projectId": "",
     "senderId": ""
-  }
+  },
+  "enterpriseBackendUrl": "https://enterprise.example.com"
 }
