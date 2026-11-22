@@ -90,3 +90,74 @@ test('offline host logout remains retryable with same enterprise session', async
   await f.session.retryLogout();
   expect(f.calls.at(-1)?.authorization).toBe('Bearer enterprise-memory-token');
 });
+test('logout while enterprise login is pending never starts SDK login', async () => {
+  let resolve!: (value: any) => void;
+  const response = new Promise(r => {
+    resolve = r;
+  });
+  const prepareLogin = jest.fn(async () => preparation);
+  const transport = jest.fn(async (url: any) =>
+    String(url).endsWith('/login')
+      ? response
+      : { ok: true, json: async () => ({}) },
+  );
+  const session = createEnterpriseSession(
+    'https://host.example',
+    { prepareLogin, loginWithTicket: jest.fn(), logout: jest.fn() } as any,
+    transport as any,
+  );
+  const attempt = session.login('name', 'password');
+  const rejected = expect(attempt).rejects.toMatchObject({
+    code: 'LOGIN_ATTEMPT_SUPERSEDED',
+  });
+  await session.logout();
+  resolve({
+    ok: true,
+    json: async () => ({ enterprise_access_token: 'late-token' }),
+  });
+  await rejected;
+  expect(prepareLogin).not.toHaveBeenCalled();
+  expect(transport).toHaveBeenCalledWith(
+    'https://host.example/api/auth/logout',
+    expect.objectContaining({
+      headers: expect.objectContaining({ Authorization: 'Bearer late-token' }),
+    }),
+  );
+});
+test('a delayed logout revokes its captured host session, never the next user', async () => {
+  let release!: () => void;
+  const pending = new Promise<void>(resolve => {
+    release = resolve;
+  });
+  const revoked: string[] = [];
+  let count = 0;
+  const native = {
+    prepareLogin: async () => preparation,
+    loginWithTicket: async () => {},
+    logout: async () => pending,
+  };
+  const transport = async (url: any, opts: any) => {
+    const route = String(url);
+    if (route.endsWith('/logout')) revoked.push(opts.headers.Authorization);
+    return {
+      ok: true,
+      json: async () =>
+        route.endsWith('/login')
+          ? { enterprise_access_token: `host-${++count}` }
+          : { attempt_id: 'attempt', login_ticket: 'ticket' },
+    };
+  };
+  const host = createEnterpriseSession(
+    'https://host.example',
+    native as any,
+    transport as any,
+  );
+  await host.login('A', 'password');
+  const logout = host.logout();
+  await host.login('B', 'password');
+  release();
+  await logout;
+  expect(revoked).toEqual(['Bearer host-1', 'Bearer host-1']);
+  await host.retryLogout();
+  expect(revoked.at(-1)).toBe('Bearer host-2');
+});
