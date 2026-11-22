@@ -61,3 +61,7 @@ npm run typecheck
 ```
 
 The host tests use real loopback HTTP fixture servers and temporary on-disk state. They cover fixture enablement, rejected credentials, unauthorized bootstrap, identity/verifier override rejection, principal binding, safe response projection, logout-before-delivery, restart recovery, stable retry UUIDs, fresh host-session UUIDs and pending/completed status.
+
+## Web test trên Test 2
+
+Đặt `VOICE_WEB_ALLOWED_ORIGINS=http://127.0.0.1:5188` trong cấu hình private của host. Mặc định không cho browser origin nào. `os=web` chỉ dùng `push_environment=default`, `application_id` phải là exact origin đăng ký và bằng Origin của browser. Gateway cũng phải allow origin đó trong `cors.allowed_origins`. Không dùng wildcard; không forward Origin vào API cấp ticket server-to-server. CORS không thay xác thực bearer và không xác minh danh tính khách hàng. Fixture luôn dùng principal/user ID cấu hình phía server.

@@ -76,6 +76,14 @@ async function createSimulator(config) {
     !/^cvsk_[0-9a-f-]{36}\.[A-Za-z0-9_-]{43}$/.test(config.integrationToken)
   )
     throw error('SERVER_CONFIGURATION_REQUIRED');
+  const webAllowedOrigins = new Set(config.webAllowedOrigins || []);
+  for (const value of webAllowedOrigins) {
+    const candidate = new URL(value);
+    if (candidate.origin !== value || !(
+      candidate.protocol === 'https:' || candidate.protocol === 'http:' &&
+      ['127.0.0.1', 'localhost', '[::1]'].includes(candidate.hostname)
+    )) throw error('INVALID_WEB_ORIGIN');
+  }
   const origin = new URL(config.gatewayUrl);
   const loopback = ['127.0.0.1', 'localhost', '[::1]'].includes(
     origin.hostname,
@@ -199,6 +207,26 @@ async function createSimulator(config) {
   const failures = new Map();
   const server = http.createServer(async (request, response) => {
     try {
+      const requestOrigin = request.headers.origin;
+      response.setHeader('Vary', 'Origin');
+      if (requestOrigin !== undefined) {
+        if (!webAllowedOrigins.has(requestOrigin)) throw error('FORBIDDEN_ORIGIN', 403);
+        response.setHeader('Access-Control-Allow-Origin', requestOrigin);
+      }
+      if (request.method === 'OPTIONS') {
+        const requestedHeaders = (request.headers['access-control-request-headers'] || '')
+          .split(',').map(value => value.trim().toLowerCase()).filter(Boolean);
+        if (!requestOrigin || !['GET', 'POST'].includes(request.headers['access-control-request-method']) ||
+          requestedHeaders.some(value => !['authorization', 'content-type'].includes(value)))
+          throw error('FORBIDDEN_PREFLIGHT', 403);
+        response.writeHead(204, {
+          'Access-Control-Allow-Methods': 'GET, POST',
+          'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+          'Cache-Control': 'no-store',
+        });
+        response.end();
+        return;
+      }
       if (request.method === 'POST' && request.url === '/api/auth/login') {
         const body = await readBody(request);
         exactKeys(body, ['username', 'password']);
@@ -244,7 +272,7 @@ async function createSimulator(config) {
         if (
           !uuid.test(body.attempt_id) ||
           !uuid.test(body.installation_id) ||
-          !['android', 'ios'].includes(body.os) ||
+          !['android', 'ios', 'web'].includes(body.os) ||
           typeof body.application_id !== 'string' ||
           !body.application_id ||
           body.application_id.length > 255 ||
@@ -255,6 +283,9 @@ async function createSimulator(config) {
           body.code_challenge_method !== 'S256'
         )
           throw error('INVALID_INPUT');
+        if (body.os === 'web' && (!webAllowedOrigins.has(body.application_id) || body.push_environment !== 'default') ||
+          requestOrigin !== undefined && (body.os !== 'web' || body.application_id !== requestOrigin))
+          throw error('FORBIDDEN_ORIGIN', 403);
         const data = await gateway('/session-tickets', 'POST', {
           ...body,
           app_id: config.appId,
@@ -404,6 +435,7 @@ async function createSimulator(config) {
 module.exports = { createSimulator };
 if (require.main === module) {
   const config = {
+    webAllowedOrigins: (process.env.VOICE_WEB_ALLOWED_ORIGINS || '').split(',').map(value => value.trim()).filter(Boolean),
     fixtureEnabled: process.env.VOICE_DEMO_FIXTURE_ENABLED === '1',
     fixtureUsername:
       process.env.VOICE_DEMO_FIXTURE_USERNAME || 'fixture-customer',

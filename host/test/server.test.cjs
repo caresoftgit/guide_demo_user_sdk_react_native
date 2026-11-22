@@ -60,6 +60,7 @@ async function fixture(t) {
   });
   await new Promise(resolve => gateway.listen(0, '127.0.0.1', resolve));
   const config = {
+    webAllowedOrigins: ['http://127.0.0.1:5188'],
     fixtureEnabled: true,
     fixtureUsername: 'fixture-customer',
     fixturePassword: 'fixture-password-for-testing',
@@ -79,13 +80,14 @@ async function fixture(t) {
     return app;
   }
   await start();
-  const request = async (route, body, token) => {
+  const request = async (route, body, token, headers = {}) => {
     const response = await fetch(
       `http://127.0.0.1:${app.server.address().port}${route}`,
       {
         method: body === undefined ? 'GET' : 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...headers,
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: body === undefined ? undefined : JSON.stringify(body),
@@ -93,6 +95,7 @@ async function fixture(t) {
     );
     return {
       status: response.status,
+      headers: response.headers,
       cache: response.headers.get('cache-control'),
       body: await response.json(),
     };
@@ -311,4 +314,45 @@ test('logout stays inactive when directory sync fails after state replacement', 
     (await f.request('/api/voice/bootstrap', preparation, token)).status,
     401,
   );
+});
+
+test('Web bootstrap allows exact browser origin and keeps integration secret server-side', async t => {
+  const f = await fixture(t);
+  const origin = 'http://127.0.0.1:5188';
+  const signedIn = await f.request('/api/auth/login', {username: f.config.fixtureUsername, password: f.config.fixturePassword}, undefined, {Origin: origin});
+  assert.equal(signedIn.headers.get('access-control-allow-origin'), origin);
+  const response = await f.request('/api/voice/bootstrap', {...preparation, os: 'web', application_id: origin}, signedIn.body.enterprise_access_token, {Origin: origin});
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('access-control-allow-origin'), origin);
+  assert.equal(response.headers.get('vary'), 'Origin');
+  assert.equal(f.requests[0].body.user_id, f.config.userId);
+  assert.equal(f.requests[0].body.os, 'web');
+  assert.equal(f.requests[0].headers.origin, undefined);
+  assert.equal(JSON.stringify(response.body).includes(f.config.integrationToken), false);
+});
+test('Web host rejects foreign origins and origin mismatch before forwarding bootstrap', async t => {
+  const f = await fixture(t);
+  const token = await login(f);
+  const denied = await f.request('/api/auth/login', {username:f.config.fixtureUsername,password:f.config.fixturePassword},undefined,{Origin:'https://foreign.example'});
+  assert.equal(denied.status, 403);
+  assert.equal(denied.headers.get('access-control-allow-origin'), null);
+  for (const body of [
+    {...preparation, os:'web',application_id:'https://foreign.example'},
+    {...preparation, os:'web',application_id:'http://127.0.0.1:5188',push_environment:'sandbox'},
+    {...preparation, os:'android'},
+  ]) {
+    const response = await f.request('/api/voice/bootstrap',body,token,{Origin:'http://127.0.0.1:5188'});
+    assert.equal(response.status,403);
+  }
+  assert.equal(f.requests.length,0);
+});
+test('Web preflight only permits known origin method and headers', async t => {
+  const f=await fixture(t);
+  const url=`http://127.0.0.1:${f.app.server.address().port}/api/voice/bootstrap`;
+  const headers={Origin:'http://127.0.0.1:5188','Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'authorization,content-type'};
+  const allowed=await fetch(url,{method:'OPTIONS',headers});
+  assert.equal(allowed.status,204);
+  assert.equal(allowed.headers.get('access-control-allow-origin'),headers.Origin);
+  assert.equal((await fetch(url,{method:'OPTIONS',headers:{...headers,'Access-Control-Request-Method':'DELETE'}})).status,403);
+  assert.equal((await fetch(url,{method:'OPTIONS',headers:{...headers,'Access-Control-Request-Headers':'x-integration-token'}})).status,403);
 });
