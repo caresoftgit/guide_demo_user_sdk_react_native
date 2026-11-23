@@ -92,7 +92,3 @@ src/voice.config.json
 google-services.json
 GoogleService-Info.plist
 __pycache__/
-
-# Host simulator private state and secret files
-host/.private/
-host/*.local.json

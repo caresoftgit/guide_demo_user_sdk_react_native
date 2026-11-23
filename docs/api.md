@@ -58,7 +58,7 @@ Subscribe state trước khi lấy snapshot ban đầu; `revision` tăng đơn �
 
 State public không có access/refresh/account token, media credential hoặc nội dung push. Ticket, push token, enterprise bearer và mọi credential phải được redaction khỏi log, crash report, analytics và URL. Native tự quản lý refresh single-flight và storage.
 
-Khi ticket hết hạn hoặc exchange mất response, bắt đầu attempt mới qua host còn đăng nhập. `logout()` dọn local trước, rồi app luôn gửi enterprise logout để host ghi durable revoke outbox. Khi offline, giao diện phải báo host chưa nhận được yêu cầu. Sau khi host nhận, outbox retry/poll đến completion. Absolute session expiry cho phép call ACTIVE đang có hoàn tất theo capability native và hard deadline. Explicit revoke dừng quyền phiên theo gateway.
+Khi ticket hết hạn hoặc exchange mất response, bắt đầu attempt mới qua host còn đăng nhập. `logout()` ngắt Voice, dọn local trước rồi cố revoke phiên Voice; không đăng xuất tài khoản doanh nghiệp. Khi đăng xuất toàn ứng dụng, luôn thực hiện cả SDK logout và logout doanh nghiệp, kể cả một bên lỗi, trong coordinator tuần tự hóa với kết nối/chuyển tài khoản. Backend vô hiệu hóa phiên host và ghi durable HOST-revoke outbox cùng transaction. Khi offline, giao diện phải báo chưa xác nhận thu hồi. Sau khi host nhận, outbox retry/poll đến cleanup done. Absolute session expiry cho phép call ACTIVE đang có hoàn tất theo capability native và hard deadline. Explicit revoke dừng quyền phiên theo gateway.
 
 ## Push và quyền
 

@@ -13,7 +13,7 @@ const config = JSON.parse(
 );
 const allowed = [
   'backendUrl',
-  'enterpriseBackendUrl',
+  'bootstrapUrl',
   'accountId',
   'appId',
   'businessNumber',
@@ -32,7 +32,7 @@ if (
 ) {
   throw new Error('Only public Firebase application configuration is accepted');
 }
-for (const key of ['backendUrl', 'enterpriseBackendUrl']) {
+for (const key of ['backendUrl', 'bootstrapUrl']) {
   const url = new URL(config[key]);
   if (
     url.protocol !== 'https:' ||

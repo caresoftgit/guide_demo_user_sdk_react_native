@@ -3,7 +3,7 @@
   "accountId": "",
   "appId": "",
   "businessNumber": "",
-  "supportName": "Chăm sóc khách hàng",
+  "supportName": "Ch\u0103m s\u00f3c kh\u00e1ch h\u00e0ng",
   "pushEnvironment": "production",
   "firebase": {
     "appId": "",
@@ -11,5 +11,5 @@
     "projectId": "",
     "senderId": ""
   },
-  "enterpriseBackendUrl": "https://enterprise.example.com"
+  "bootstrapUrl": "https://app.example.com/api/voice/bootstrap"
 }

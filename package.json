@@ -10,9 +10,7 @@
     "test": "jest --runInBand",
     "configure": "node scripts/configure.cjs",
     "postinstall": "node scripts/configure.cjs",
-    "typecheck": "tsc --noEmit",
-    "host": "node host/server.cjs",
-    "test:host": "node --test host/test/*.test.cjs"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@caresoft/customer-voice-react-native": "file:packages/caresoft-customer-voice-react-native-0.5.0.tgz",
